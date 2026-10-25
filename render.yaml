@@ -1,0 +1,44 @@
+# SlothFeed Render Infrastructure Blueprint
+# Declarative Multi-Service Deployment for Hacktoberfest 2026 Week 3
+# Documentation: https://render.com/docs/blueprint-spec
+
+services:
+  # =========================================================================
+  # 1. SlothFeed Web Service (FastAPI REST API + Minimalist Dashboard)
+  # =========================================================================
+  - type: web
+    name: slothfeed-web
+    runtime: docker
+    plan: starter
+    region: oregon
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: GEMMA_MODEL_NAME
+        value: gemma-2-2b-it
+      - key: GEMMA_THREADS
+        value: 4
+      - key: HF_TOKEN
+        sync: false # Set in Render Dashboard if querying Hugging Face Inference API
+    autoDeploy: true
+
+  # =========================================================================
+  # 2. SlothFeed Background Worker Daemon (Continuous Offline Tab Digestion)
+  # =========================================================================
+  - type: worker
+    name: slothfeed-worker
+    runtime: docker
+    plan: starter
+    region: oregon
+    dockerfilePath: ./Dockerfile
+    dockerCommand: python -m backend.worker
+    envVars:
+      - key: GEMMA_MODEL_NAME
+        value: gemma-2-2b-it
+      - key: WORKER_POLL_INTERVAL
+        value: 45
+      - key: HF_TOKEN
+        sync: false
+    autoDeploy: true

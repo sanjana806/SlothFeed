@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SlothFeed — The Zero-Effort Tab & Article Digest Daemon</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🦥</text></svg>">
+</head>
+<body>
+  <div class="app-container">
+    
+    <!-- Top Announcement Banner -->
+    <div class="announcement-bar">
+      <span>🍂 Hacktoberfest 2026 "Slow & Steady" Challenge</span>
+      <span class="sep">•</span>
+      <span>Google Gemma 2 × Render Blueprint</span>
+      <span class="sep">•</span>
+      <span class="pill-open">100% Open Weights & Private Cloud</span>
+    </div>
+
+    <!-- Header Section -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-mascot">🦥</div>
+        <div class="brand-text">
+          <div class="brand-title-row">
+            <h1>SlothFeed</h1>
+            <span class="badge-version">v1.0 Daemon</span>
+            <span id="model-status-pill" class="badge-model">
+              <span class="status-dot"></span>
+              <span id="model-status-text">Gemma 2 (2B-IT)</span>
+            </span>
+          </div>
+          <p class="brand-tagline">The Zero-Effort Tab & Article Digest Daemon. Stop hoarding tabs you'll never read.</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <a href="https://github.com/sanjana806/SlothFeed" target="_blank" rel="noopener noreferrer" class="btn btn-secondary" title="View Source on GitHub">
+          <span class="btn-icon">⭐</span>
+          <span>GitHub</span>
+        </a>
+        <button id="btn-seed" class="btn btn-secondary" title="Load sample developer tabs hoarded in the wild">
+          <span class="btn-icon">📦</span>
+          <span>Seed Demo Tabs</span>
+        </button>
+        <button id="btn-slothify-all" class="btn btn-primary" title="Trigger Gemma 2 batch reasoning across all tabs">
+          <span class="btn-icon">⚡</span>
+          <span>Slothify All</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Stats Dashboard Banner -->
+    <section class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Tabs Slothified</div>
+        <div class="stat-value" id="stat-total-tabs">0</div>
+        <div class="stat-sub">Tab graveyard count</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Reading Time Saved</div>
+        <div class="stat-value text-accent" id="stat-time-saved">0 min</div>
+        <div class="stat-sub" id="stat-hours-saved">0.0 hours reclaimed</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Words Compressed</div>
+        <div class="stat-value" id="stat-words-saved">0</div>
+        <div class="stat-sub">Distilled into 2-sentence briefs</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Sloth Verdict Ratio</div>
+        <div class="stat-breakdown">
+          <span class="pill-verdict-mini read" id="stat-count-read">0 Read</span>
+          <span class="pill-verdict-mini skim" id="stat-count-skim">0 Skim</span>
+          <span class="pill-verdict-mini skip" id="stat-count-skip">0 Skip</span>
+        </div>
+        <div class="stat-sub">Filtered with DeepMind Gemma 2</div>
+      </div>
+    </section>
+
+    <!-- Ingestion Input Deck -->
+    <section class="ingestion-deck">
+      <div class="input-card">
+        <div class="input-header">
+          <h3>📥 Dump Chaotic Tabs & Links</h3>
+          <div class="input-mode-toggles">
+            <button id="mode-single" class="mode-tab active">Single Link</button>
+            <button id="mode-batch" class="mode-tab">Batch Paste (URLs / Blobs)</button>
+          </div>
+        </div>
+
+        <!-- Single URL Form -->
+        <form id="single-form" class="form-container">
+          <div class="input-row">
+            <input 
+              type="text" 
+              id="input-url" 
+              placeholder="Paste article URL or title (e.g. https://deepmind.google/gemma-2...)" 
+              autocomplete="off" 
+              required
+            />
+            <button type="submit" id="btn-digest-single" class="btn btn-accent">
+              <span>Digest Tab</span>
+              <span class="arrow">→</span>
+            </button>
+          </div>
+        </form>
+
+        <!-- Batch Textarea Form (Hidden by default) -->
+        <form id="batch-form" class="form-container hidden">
+          <textarea 
+            id="batch-urls" 
+            rows="4" 
+            placeholder="Paste multiple URLs (one per line) or dump raw unread newsletter text blobs..."
+          ></textarea>
+          <div class="batch-footer">
+            <span class="batch-hint">SlothFeed will asynchronously scrape, clean boilerplate, and distill via Gemma 2.</span>
+            <button type="submit" id="btn-digest-batch" class="btn btn-accent">
+              <span>Process Batch Dump</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- Main Content Section: Tabs Graveyard -->
+    <main class="dashboard-main">
+      <div class="dashboard-toolbar">
+        <div class="toolbar-left">
+          <h2>Graveyard of Tabs</h2>
+          <span id="tab-count-badge" class="count-badge">0 items</span>
+        </div>
+
+        <!-- Filters & Global Toggles -->
+        <div class="toolbar-right">
+          <div class="filter-group">
+            <button class="filter-btn active" data-filter="all">All</button>
+            <button class="filter-btn filter-read" data-filter="Read">🟢 Must Read</button>
+            <button class="filter-btn filter-skim" data-filter="Skim">🟡 Skim</button>
+            <button class="filter-btn filter-skip" data-filter="Skip">⚪ Skip Completely</button>
+          </div>
+
+          <div class="view-toggles">
+            <label class="toggle-control" title="Toggle side-by-side word count reduction widget on all cards">
+              <input type="checkbox" id="toggle-wordcount-metrics" checked>
+              <span class="toggle-label">Show Word Reduction</span>
+            </label>
+          </div>
+
+          <button id="btn-clear-all" class="btn btn-ghost" title="Clear all digests">
+            <span>Empty Graveyard</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Loading State Overlay / Card -->
+      <div id="sloth-loading" class="loading-state hidden">
+        <div class="sloth-spinner">🦥</div>
+        <div class="loading-title" id="loading-message">Slowly digesting article...</div>
+        <div class="loading-sub">Gemma 2 is reading so you don't have to.</div>
+      </div>
+
+      <!-- Digest Cards Container -->
+      <div id="cards-grid" class="cards-grid">
+        <!-- Rendered dynamically by app.js -->
+      </div>
+
+      <!-- Empty State -->
+      <div id="empty-state" class="empty-state hidden">
+        <div class="empty-icon">🛋️</div>
+        <h3>Your Tab Graveyard is Pristine</h3>
+        <p>No hoarded browser tabs cluttering your mind. Paste a chaotic URL above or click "Seed Demo Tabs" for instant evaluation.</p>
+        <button id="btn-empty-seed" class="btn btn-secondary">Load Sample Tech Tabs</button>
+      </div>
+    </main>
+
+    <!-- Footer & Architectural Credentials -->
+    <footer class="app-footer">
+      <div class="footer-grid">
+        <div class="footer-col">
+          <h4>🦥 SlothFeed Architecture</h4>
+          <p>
+            An autonomous reading janitor designed for <strong>Hacktoberfest 2026</strong>. 
+            Engineered to demonstrate the sovereign power of open-weight LLMs running on predictable cloud runtimes.
+          </p>
+        </div>
+        <div class="footer-col">
+          <h4>Google Gemma 2 Reasoning</h4>
+          <p>
+            Employs DeepMind's <code>gemma-2-2b-it</code> model turn architecture (<code>&lt;start_of_turn&gt;user...</code>) 
+            with strict JSON schema enforcement to determine Read/Skim/Skip verdicts.
+          </p>
+        </div>
+        <div class="footer-col">
+          <h4>Render Blueprint Deployment</h4>
+          <p>
+            Orchestrated declaratively via <code>render.yaml</code> as a Docker Web Service + Background Worker with 
+            integrated health checks and zero configuration drift.
+          </p>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>MIT License • Hacktoberfest 2026 "Slow & Steady" Track</span>
+        <span><a href="https://github.com/sanjana806/SlothFeed" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: underline;">sanjana806/SlothFeed</a></span>
+        <span>Hosted with ❤️ on Render</span>
+      </div>
+    </footer>
+
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
